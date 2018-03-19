@@ -1,0 +1,8 @@
+[Unit]
+Description=Run certbot (letsencrypt renewal) 
+
+[Timer]
+OnUnitActiveSec=12h
+
+[Install]
+WantedBy=timers.target

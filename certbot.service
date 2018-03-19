@@ -1,0 +1,5 @@
+[Unit]
+Description=Certbot Renewal
+
+[Service]
+ExecStart=/bin/certbot renew --post-hook "systemctl restart httpd"

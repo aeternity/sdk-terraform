@@ -1,0 +1,38 @@
+#cloud-config
+
+repo_update: true
+repo_upgrade: all
+
+fqdn: ${hostname}
+manage_etc_hosts: true
+
+runcmd:
+  - yum-config-manager --enable rhui-REGION-rhel-server-extras rhui-REGION-rhel-server-optional
+  - yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  - curl https://pkg.jenkins.io/redhat/jenkins.repo > /etc/yum.repos.d/jenkins.repo
+  - rpm --import https://pkg.jenkins.io/redhat/jenkins.io.key
+  - yum install -y zsh httpd mod_ssl certbot-apache awscli
+  - yum install -y nfs-utils
+  - yum install -y java-1.8.0-openjdk-headless dejavu-sans-fonts fontconfig jenkins
+  - echo '${efs}:/ /var/lib/jenkins nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 0 0' >> /etc/fstab
+  - mount /var/lib/jenkins
+  - chown -R 'jenkins:' /var/lib/jenkins
+  - systemctl enable jenkins
+  - systemctl start jenkins
+  - echo 'IncludeOptional conf.d/sites/*.conf' >> /etc/httpd/conf/httpd.conf
+  - mkdir /etc/httpd/conf.d/sites
+  - aws s3 cp s3://${bucket}/jenkins-pre.conf /etc/httpd/conf.d/sites/jenkins.conf
+  - aws s3 cp s3://${bucket}/ssl.conf /etc/httpd/conf.d/ssl.conf
+  - systemctl enable httpd
+  - systemctl start httpd
+  - certbot --apache --non-interactive --agree-tos --domains ${hostname} --email ${email}
+  - aws s3 cp s3://${bucket}/jenkins-post.conf /etc/httpd/conf.d/sites/jenkins.conf
+  - aws s3 cp s3://${bucket}/jenkins-le-ssl.conf /etc/httpd/conf.d/sites/jenkins-le-ssl.conf
+  - systemctl restart httpd
+  - setsebool -P httpd_can_network_connect true
+  - aws s3 cp s3://${bucket}/certbot.service /etc/systemd/system/certbot.service
+  - aws s3 cp s3://${bucket}/certbot.timer /etc/systemd/system/certbot.timer
+  - systemctl enable certbot.timer
+  - systemctl start certbot.timer
+  
+output: { all: "| tee -a /var/log/cloud-init-output.log" }
