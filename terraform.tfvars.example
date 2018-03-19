@@ -1,0 +1,7 @@
+aws_region = "eu-central-1"
+aws_profile = "aeternity-sdk"
+public_key = "ssh-rsa AAA...== user@host"
+bucket = "aeternity-sdk"
+my_ip = "0.0.0.0"
+hostname = "jenkins.mydomain.com"
+email = "admin@mydomain.com"

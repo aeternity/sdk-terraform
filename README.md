@@ -13,6 +13,8 @@ It is assumed that Terraform has already been
 [installed](https://www.terraform.io/downloads.html) and the binary in `$PATH`.
 
 ```
+cp terraform.tfvars{.example,}
+$EDITOR terraform.tfvars # check variables.tf for a description of the variables
 terraform init
 terraform apply
 ```
