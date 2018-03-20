@@ -34,5 +34,9 @@ runcmd:
   - aws s3 cp s3://${bucket}/certbot.timer /etc/systemd/system/certbot.timer
   - systemctl enable certbot.timer
   - systemctl start certbot.timer
-  
+  - yum install -y git
+  # docker-compose from RHEL is too old (pre API version 3)
+  - curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` -o /usr/bin/docker-compose
+  - chmod +x /usr/bin/docker-compose
+
 output: { all: "| tee -a /var/log/cloud-init-output.log" }
