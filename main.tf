@@ -29,6 +29,10 @@ data "aws_ami" "rhel" {
   owners = ["309956199498"]
 }
 
+locals {
+  availability_zone = "${var.aws_region}a"
+}
+
 resource "aws_default_vpc" "default" {
   tags {
     Name = "Default VPC"
@@ -36,7 +40,7 @@ resource "aws_default_vpc" "default" {
 }
 
 resource "aws_default_subnet" "default" {
-  availability_zone = "${var.aws_region}a"
+  availability_zone = "${local.availability_zone}"
 
   tags {
     Name = "Default subnet for ${var.aws_region}a"
@@ -223,11 +227,35 @@ resource "aws_security_group" "jenkins" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  ingress {
+    from_port   = 3013
+    to_port     = 3013
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 3113
+    to_port     = 3113
+    protocol    = "tcp"
+    cidr_blocks = ["${var.my_ip}/32"]
+  }
 }
 
 resource "aws_efs_file_system" "jenkins" {
   tags {
     Name = "aeternity-jenkins"
+  }
+}
+
+resource "aws_ebs_volume" "data" {
+  availability_zone = "${local.availability_zone}"
+  size = 100
+  type = "gp2"
+
+  tags {
+    Name = "aeternity-data"
   }
 }
 
@@ -238,6 +266,11 @@ resource "aws_instance" "jenkins" {
   user_data = "${data.template_cloudinit_config.config.rendered}"
   vpc_security_group_ids = ["${data.aws_security_group.default.id}", "${aws_security_group.jenkins.id}"]
   subnet_id = "${aws_default_subnet.default.id}"
+
+  # Don't create a new instance every time init.yaml changes
+  lifecycle {
+    ignore_changes = ["user_data"]
+  }
 
   tags {
     Name = "aeternity-jenkins"
@@ -258,4 +291,10 @@ resource "aws_efs_mount_target" "jenkins" {
 
 resource "aws_eip" "jenkins" {
   instance = "${aws_instance.jenkins.id}"
+}
+
+resource "aws_volume_attachment" "data" {
+  device_name = "/dev/sdb"
+  volume_id = "${aws_ebs_volume.data.id}"
+  instance_id = "${aws_instance.jenkins.id}"
 }

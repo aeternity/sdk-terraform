@@ -9,13 +9,31 @@ manage_etc_hosts: true
 runcmd:
   - yum-config-manager --enable rhui-REGION-rhel-server-extras rhui-REGION-rhel-server-optional
   - yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-  - curl https://pkg.jenkins.io/redhat/jenkins.repo > /etc/yum.repos.d/jenkins.repo
+  - yum-config-manager --add-repo https://pkg.jenkins.io/redhat/jenkins.repo
   - rpm --import https://pkg.jenkins.io/redhat/jenkins.io.key
   - yum install -y zsh httpd mod_ssl certbot-apache awscli
   - yum install -y nfs-utils
-  - yum install -y java-1.8.0-openjdk-headless dejavu-sans-fonts fontconfig jenkins
   - echo '${efs}:/ /var/lib/jenkins nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 0 0' >> /etc/fstab
+  - |
+    mkfs.btrfs -L data /dev/xvdb ||:
+  - mount -L data /mnt
+  - btrfs subvolume create /mnt/jenkins
+  - btrfs subvolume create /mnt/docker
+  - umount /mnt
+  - mkdir -p /var/lib/docker
+  - echo 'LABEL=data                                /var/lib/docker         btrfs   subvol=docker   0 0' >> /etc/fstab
+  - echo 'LABEL=data                             /var/lib/jenkins/workspace btrfs   subvol=jenkins  0 1' >> /etc/fstab
+  - mount /var/lib/docker
+  - yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  - rpm --import https://download.docker.com/linux/centos/gpg
+  - yum install -y docker-ce
+  - systemctl enable docker
+  - systemctl start docker
+  - yum install -y java-1.8.0-openjdk-headless dejavu-sans-fonts fontconfig jenkins
+  - usermod -a -G docker jenkins
   - mount /var/lib/jenkins
+  - mkdir -p /var/lib/jenkins/workspace
+  - mount /var/lib/jenkins/workspace
   - chown -R 'jenkins:' /var/lib/jenkins
   - systemctl enable jenkins
   - systemctl start jenkins
