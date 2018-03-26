@@ -11,7 +11,7 @@ runcmd:
   - yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
   - yum-config-manager --add-repo https://pkg.jenkins.io/redhat/jenkins.repo
   - rpm --import https://pkg.jenkins.io/redhat/jenkins.io.key
-  - yum install -y zsh httpd mod_ssl certbot-apache awscli
+  - yum install -y zsh httpd awscli
   - yum install -y nfs-utils
   - echo '${efs}:/ /var/lib/jenkins nfs4 nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2 0 0' >> /etc/fstab
   - |
@@ -38,20 +38,11 @@ runcmd:
   - systemctl enable jenkins
   - systemctl start jenkins
   - echo 'IncludeOptional conf.d/sites/*.conf' >> /etc/httpd/conf/httpd.conf
-  - mkdir /etc/httpd/conf.d/sites
-  - aws s3 cp s3://${bucket}/jenkins-pre.conf /etc/httpd/conf.d/sites/jenkins.conf
-  - aws s3 cp s3://${bucket}/ssl.conf /etc/httpd/conf.d/ssl.conf
-  - systemctl enable httpd
-  - systemctl start httpd
-  - certbot --apache --non-interactive --agree-tos --domains ${hostname} --email ${email}
-  - aws s3 cp s3://${bucket}/jenkins-post.conf /etc/httpd/conf.d/sites/jenkins.conf
-  - aws s3 cp s3://${bucket}/jenkins-le-ssl.conf /etc/httpd/conf.d/sites/jenkins-le-ssl.conf
-  - systemctl restart httpd
+  - aws s3 cp ${jenkins_config} /tmp/setup.sh
+  - bash /tmp/setup.sh
+  - aws s3 cp ${sdk_testnet_config} /tmp/setup.sh
+  - bash /tmp/setup.sh
   - setsebool -P httpd_can_network_connect true
-  - aws s3 cp s3://${bucket}/certbot.service /etc/systemd/system/certbot.service
-  - aws s3 cp s3://${bucket}/certbot.timer /etc/systemd/system/certbot.timer
-  - systemctl enable certbot.timer
-  - systemctl start certbot.timer
   - yum install -y git
   # docker-compose from RHEL is too old (pre API version 3)
   - curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` -o /usr/bin/docker-compose

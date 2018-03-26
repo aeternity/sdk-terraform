@@ -13,33 +13,20 @@
 # OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 # PERFORMANCE OF THIS SOFTWARE.
 
-variable "aws_region" {
-  description = "AWS region to launch servers."
-  default = "eu-central-1"
+variable "fqdn" {
+  description = "FQDN to set up for."
 }
 
-variable "aws_profile" {
-  description = "AWS profile to use."
+variable "hostname" {
+  description = "Hostname to set up for."
 }
 
-variable "public_key" {
-  description = "Public SSH key to deploy to all machines."
+variable "bucket_id" {
+  description = "Bucket ID to place files in."
 }
 
-variable "bucket" {
-  description = "S3 bucket to use for supplementary files."
-}
-
-variable "my_ip" {
-  description = "Own IP for initial SSH access."
-}
-
-variable "jenkins_hostname" {
-  description = "Static hostname for Jenkins - DNS must be bconfigured separately!"
-}
-
-variable "sdk_testnet_hostname" {
-  description = "Static hostname for CORS proxy - DNS must be configured separately!"
+variable "config" {
+  description = "Custom httpd configuration."
 }
 
 variable "email" {

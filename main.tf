@@ -65,10 +65,12 @@ data "template_file" "init" {
   template = "${file("${path.module}/init.yaml")}"
 
   vars {
-    hostname = "${var.hostname}"
     email = "${var.email}"
     bucket = "${var.bucket}"
+    hostname = "${var.jenkins_hostname}"
     efs = "${aws_efs_file_system.jenkins.dns_name}"
+    jenkins_config = "${module.jenkins_setup.setup}"
+    sdk_testnet_config = "${module.sdk_testnet_setup.setup}"
   }
 }
 
@@ -139,64 +141,34 @@ resource "aws_iam_access_key" "aeternity_sdk" {
   user = "${aws_iam_user.aeternity_sdk.name}"
 }
 
-resource "aws_s3_bucket_object" "ssl_conf" {
-  bucket = "${aws_s3_bucket.data.id}"
-  key = "ssl.conf"
-  source = "${path.module}/ssl.conf"
-}
-
-data "template_file" "jenkins_pre_conf" {
-  template = "${file("${path.module}/jenkins-pre.conf")}"
+data "template_file" "jenkins_conf" {
+  template = "${file("${path.module}/jenkins.conf")}"
 
   vars {
-    hostname = "${var.hostname}"
+    hostname = "${var.jenkins_hostname}"
   }
 }
 
-resource "aws_s3_bucket_object" "jenkins_pre_conf" {
-  bucket = "${aws_s3_bucket.data.id}"
-  key = "jenkins-pre.conf"
-  content = "${data.template_file.jenkins_pre_conf.rendered}"
+module "jenkins_setup" {
+  source = "./certbot"
+  fqdn = "${var.jenkins_hostname}"
+  hostname = "jenkins"
+  bucket_id = "${var.bucket}"
+  email = "${var.email}"
+  config = "${data.template_file.jenkins_conf.rendered}"
 }
 
-data "template_file" "jenkins_post_conf" {
-  template = "${file("${path.module}/jenkins-post.conf")}"
-
-  vars {
-    hostname = "${var.hostname}"
-  }
+data "template_file" "sdk_testnet_conf" {
+  template = "${file("${path.module}/sdk-testnet.conf")}"
 }
 
-resource "aws_s3_bucket_object" "jenkins_post_conf" {
-  bucket = "${aws_s3_bucket.data.id}"
-  key = "jenkins-post.conf"
-  content = "${data.template_file.jenkins_post_conf.rendered}"
-}
-
-data "template_file" "jenkins_le_ssl_conf" {
-  template = "${file("${path.module}/jenkins-le-ssl.conf")}"
-
-  vars {
-    hostname = "${var.hostname}"
-  }
-}
-
-resource "aws_s3_bucket_object" "jenkins_le_ssl_conf" {
-  bucket = "${aws_s3_bucket.data.id}"
-  key = "jenkins-le-ssl.conf"
-  content = "${data.template_file.jenkins_le_ssl_conf.rendered}"
-}
-
-resource "aws_s3_bucket_object" "certbot_service" {
-  bucket = "${aws_s3_bucket.data.id}"
-  key = "certbot.service"
-  source = "${path.module}/certbot.service"
-}
-
-resource "aws_s3_bucket_object" "certbot_timer" {
-  bucket = "${aws_s3_bucket.data.id}"
-  key = "certbot.timer"
-  source = "${path.module}/certbot.timer"
+module "sdk_testnet_setup" {
+  source = "./certbot"
+  fqdn = "${var.sdk_testnet_hostname}"
+  hostname = "sdk-testnet"
+  bucket_id = "${var.bucket}"
+  email = "${var.email}"
+  config = "${data.template_file.sdk_testnet_conf.rendered}"
 }
 
 data "aws_security_group" "default" {
@@ -277,9 +249,6 @@ resource "aws_instance" "jenkins" {
   }
 
   depends_on = [
-    "aws_s3_bucket_object.certbot_service", "aws_s3_bucket_object.certbot_timer",
-    "aws_s3_bucket_object.jenkins_pre_conf", "aws_s3_bucket_object.jenkins_post_conf",
-    "aws_s3_bucket_object.ssl_conf", "aws_s3_bucket_object.jenkins_le_ssl_conf",
     "aws_efs_mount_target.jenkins"
   ]
 }
