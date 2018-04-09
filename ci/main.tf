@@ -160,20 +160,6 @@ resource "aws_security_group" "jenkins" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  ingress {
-    from_port   = 3013
-    to_port     = 3013
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 3113
-    to_port     = 3113
-    protocol    = "tcp"
-    cidr_blocks = ["${var.my_ip}/32"]
-  }
 }
 
 resource "aws_efs_file_system" "jenkins" {

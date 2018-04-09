@@ -24,6 +24,23 @@ data "aws_ami" "rhel" {
   owners = ["309956199498"]
 }
 
+resource "aws_iam_user" "aeternity_sdk" {
+  name = "aeternity-sdk"
+}
+
+resource "aws_iam_access_key" "aeternity_sdk" {
+  user = "${aws_iam_user.aeternity_sdk.name}"
+}
+
+data "template_file" "credentials" {
+  template = "${file("${path.module}/credentials.sh")}"
+
+  vars {
+    access_key = "${aws_iam_access_key.aeternity_sdk.id}"
+    secret_access_key = "${aws_iam_access_key.aeternity_sdk.secret}"
+  }
+}
+
 data "template_file" "init" {
   template = "${file("${path.module}/init.yaml")}"
 
@@ -35,6 +52,11 @@ data "template_file" "init" {
 data "template_cloudinit_config" "config" {
   gzip = true
   base64_encode = true
+
+  part {
+    content_type = "text/x-shellscript"
+    content      = "${data.template_file.credentials.rendered}"
+  }
 
   part {
     content_type = "text/cloud-config"
@@ -58,6 +80,20 @@ resource "aws_security_group" "republica" {
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 3013
+    to_port     = 3013
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 3113
+    to_port     = 3113
+    protocol    = "tcp"
+    cidr_blocks = ["${var.my_ip}/32"]
   }
 }
 
