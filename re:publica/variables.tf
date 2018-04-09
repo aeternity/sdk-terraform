@@ -34,3 +34,7 @@ variable "security_groups" {
   type = "list"
   default = []
 }
+
+variable "my_ip" {
+  description = "Own IP for internal port access."
+}

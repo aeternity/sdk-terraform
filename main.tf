@@ -61,7 +61,6 @@ module "jenkins" {
   jenkins_hostname = "${var.jenkins_hostname}"
   sdk_testnet_hostname = "${var.sdk_testnet_hostname}"
   email = "${var.email}"
-  my_ip = "${var.my_ip}"
 }
 
 module "republica" {
@@ -71,4 +70,5 @@ module "republica" {
   key_pair = "${aws_key_pair.auth.id}"
   security_groups = ["${data.aws_security_group.default.id}", "${aws_security_group.office.id}"]
   hostname = "${var.republica_hostname}"
+  my_ip = "${var.my_ip}"
 }

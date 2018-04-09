@@ -35,10 +35,6 @@ variable "security_groups" {
   default = []
 }
 
-variable "my_ip" {
-  description = "Own IP for internal port access."
-}
-
 variable "jenkins_hostname" {
   description = "Static hostname for Jenkins - DNS must be bconfigured separately!"
 }
