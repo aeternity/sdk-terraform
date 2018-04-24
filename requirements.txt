@@ -1,0 +1,2 @@
+letsencrypt==0.7.0
+letsencrypt-s3front==0.1.3

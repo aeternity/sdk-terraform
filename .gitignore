@@ -1,3 +1,6 @@
 /.terraform
 *.tfstate*
 /terraform.tfvars
+/letsencrypt
+/.envrc
+/venv
