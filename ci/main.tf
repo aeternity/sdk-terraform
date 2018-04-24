@@ -195,7 +195,7 @@ resource "aws_instance" "jenkins" {
 
   # Don't create a new instance every time init.yaml changes
   lifecycle {
-    ignore_changes = ["user_data"]
+    ignore_changes = ["user_data", "ami"]
   }
 
   tags {
