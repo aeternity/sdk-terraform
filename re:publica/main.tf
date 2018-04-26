@@ -227,7 +227,6 @@ resource "aws_cloudfront_distribution" "beer_aepp" {
   }
 
   lifecycle { # Ignore changes after letsencrypt deployment
-    ignore_changes = ["viewer_certificate", "default_cache_behavior.viewer_protocol_policy"]
+    ignore_changes = ["viewer_certificate", "default_cache_behavior"]
   }
 }
-
