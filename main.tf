@@ -79,13 +79,3 @@ module "jenkins" {
   aws_key = "${aws_iam_access_key.aeternity_sdk.id}"
   aws_secret = "${aws_iam_access_key.aeternity_sdk.secret}"
 }
-
-module "republica" {
-  source = "./re:publica"
-  key_pair = "${aws_key_pair.auth.id}"
-  hostname = "${var.republica_hostname}"
-  my_ip = "${var.my_ip}"
-  aws_key = "${aws_iam_access_key.aeternity_sdk.id}"
-  aws_secret = "${aws_iam_access_key.aeternity_sdk.secret}"
-  ci_user = "${aws_iam_user.aeternity_sdk.arn}"
-}
