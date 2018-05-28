@@ -22,6 +22,12 @@ locals {
   availability_zone = "${var.aws_region}a"
 }
 
+resource "aws_default_vpc" "default" {
+  tags {
+    Name = "Default VPC"
+  }
+}
+
 resource "aws_default_subnet" "default" {
   availability_zone = "${local.availability_zone}"
 
@@ -35,8 +41,17 @@ resource "aws_key_pair" "auth" {
   public_key = "${var.public_key}"
 }
 
+resource "aws_iam_user" "aeternity_sdk" {
+  name = "aeternity-sdk"
+}
+
+resource "aws_iam_access_key" "aeternity_sdk" {
+  user = "${aws_iam_user.aeternity_sdk.name}"
+}
+
 data "aws_security_group" "default" {
   name = "default"
+  vpc_id = "${aws_default_vpc.default.id}"
 }
 
 resource "aws_security_group" "office" {
@@ -61,14 +76,16 @@ module "jenkins" {
   jenkins_hostname = "${var.jenkins_hostname}"
   sdk_testnet_hostname = "${var.sdk_testnet_hostname}"
   email = "${var.email}"
+  aws_key = "${aws_iam_access_key.aeternity_sdk.id}"
+  aws_secret = "${aws_iam_access_key.aeternity_sdk.secret}"
 }
 
 module "republica" {
   source = "./re:publica"
-  subnet = "${aws_default_subnet.default.id}"
-  availability_zone = "${local.availability_zone}"
   key_pair = "${aws_key_pair.auth.id}"
-  security_groups = ["${data.aws_security_group.default.id}", "${aws_security_group.office.id}"]
   hostname = "${var.republica_hostname}"
   my_ip = "${var.my_ip}"
+  aws_key = "${aws_iam_access_key.aeternity_sdk.id}"
+  aws_secret = "${aws_iam_access_key.aeternity_sdk.secret}"
+  ci_user = "${aws_iam_user.aeternity_sdk.arn}"
 }

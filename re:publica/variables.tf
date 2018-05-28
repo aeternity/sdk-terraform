@@ -13,14 +13,6 @@
 # OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 # PERFORMANCE OF THIS SOFTWARE.
 
-variable "subnet" {
-  description = "AWS subnet to launch servers in."
-}
-
-variable "availability_zone" {
-  description = "AWS availability zone to launch servers in."
-}
-
 variable "key_pair" {
   description = "Key pair ID to use for initial access."
 }
@@ -29,12 +21,18 @@ variable "hostname" {
   description = "Static hostname for CORS proxy - DNS must be configured separately!"
 }
 
-variable "security_groups" {
-  description = "Additional security groups to apply"
-  type = "list"
-  default = []
-}
-
 variable "my_ip" {
   description = "Own IP for internal port access."
+}
+
+variable "aws_key" {
+  description = "AWS key used to access internal resources."
+}
+
+variable "aws_secret" {
+  description = "AWS secret used to access internal resources."
+}
+
+variable "ci_user" {
+  description = "ARN of user to get bucket write access."
 }

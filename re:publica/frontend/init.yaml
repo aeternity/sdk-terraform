@@ -11,7 +11,7 @@ runcmd:
   - yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
   - yum install -y https://repo.saltstack.com/yum/redhat/salt-repo-2017.7-1.el7.noarch.rpm
   - yum install -y git salt-minion python2-pip python-pygit2 python-docker
-  - 'mkfs.btrfs -L data /dev/xvdb ||:'
+  - 'mkfs.btrfs -L data /dev/nvme1n1 ||:'
   - mount -L data /mnt
   - btrfs subvolume create /mnt/docker
   - umount /mnt

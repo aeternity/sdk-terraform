@@ -28,8 +28,8 @@ data "template_file" "credentials" {
   template = "${file("${path.module}/credentials.sh")}"
 
   vars {
-    access_key = "${aws_iam_access_key.aeternity_sdk.id}"
-    secret_access_key = "${aws_iam_access_key.aeternity_sdk.secret}"
+    access_key = "${var.aws_key}"
+    secret_access_key = "${var.aws_secret}"
   }
 }
 
@@ -107,10 +107,6 @@ POLICY
   tags {
     Name = "aeternity-sdk"
   }
-}
-
-resource "aws_iam_access_key" "aeternity_sdk" {
-  user = "${aws_iam_user.aeternity_sdk.name}"
 }
 
 data "template_file" "jenkins_conf" {

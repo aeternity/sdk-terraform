@@ -1,0 +1,23 @@
+#cloud-config
+
+repo_update: true
+repo_upgrade: all
+
+fqdn: ${hostname}
+manage_etc_hosts: true
+
+runcmd:
+  - yum-config-manager --enable rhui-REGION-rhel-server-extras rhui-REGION-rhel-server-optional
+  - yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  - yum install -y https://repo.saltstack.com/yum/redhat/salt-repo-2017.7-1.el7.noarch.rpm
+  - yum install -y git salt-minion python2-pip python-pygit2 python-docker
+  - 'mkfs.btrfs -L data /dev/nvme1n1 ||:'
+  - mount -L data /mnt
+  - btrfs subvolume create /mnt/docker
+  - umount /mnt
+  - git clone https://github.com/aeternity/sdk-saltstack.git /srv/salt
+  - systemctl enable salt-minion
+  - systemctl start salt-minion
+  - salt-call --local state.apply
+
+output: { all: "| tee -a /var/log/cloud-init-output.log" }

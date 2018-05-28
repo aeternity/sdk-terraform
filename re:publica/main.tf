@@ -18,121 +18,145 @@ data "aws_ami" "rhel" {
 
   filter {
     name = "name"
-    values = ["RHEL-7.*HVM*"]
+    values = ["RHEL-7.5*HVM*"]
   }
 
   owners = ["309956199498"]
-}
-
-resource "aws_iam_user" "aeternity_sdk" {
-  name = "aeternity-sdk"
-}
-
-resource "aws_iam_access_key" "aeternity_sdk" {
-  user = "${aws_iam_user.aeternity_sdk.name}"
 }
 
 data "template_file" "credentials" {
   template = "${file("${path.module}/credentials.sh")}"
 
   vars {
-    access_key = "${aws_iam_access_key.aeternity_sdk.id}"
-    secret_access_key = "${aws_iam_access_key.aeternity_sdk.secret}"
+    access_key = "${var.aws_key}"
+    secret_access_key = "${var.aws_secret}"
   }
 }
 
-data "template_file" "init" {
-  template = "${file("${path.module}/init.yaml")}"
-
-  vars {
-    hostname = "${var.hostname}"
-  }
-}
-
-data "template_cloudinit_config" "config" {
-  gzip = true
-  base64_encode = true
-
-  part {
-    content_type = "text/x-shellscript"
-    content      = "${data.template_file.credentials.rendered}"
-  }
-
-  part {
-    content_type = "text/cloud-config"
-    content      = "${data.template_file.init.rendered}"
-  }
-}
-
-resource "aws_security_group" "republica" {
-  name        = "republica"
-  description = "Allow traffic related to re:publica"
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 3013
-    to_port     = 3013
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 3113
-    to_port     = 3113
-    protocol    = "tcp"
-    cidr_blocks = ["${var.my_ip}/32"]
-  }
-}
-
-resource "aws_ebs_volume" "data" {
-  availability_zone = "${var.availability_zone}"
-  size = 100
-  type = "gp2"
+resource "aws_vpc" "republica" {
+  cidr_block = "10.0.0.0/16"
+  instance_tenancy = "dedicated"
 
   tags {
-    Name = "republica-data"
+    Name = "re:publica VPC"
+    VPC = "republica"
   }
 }
 
-resource "aws_instance" "republica" {
-  ami = "${data.aws_ami.rhel.id}"
-  instance_type = "t2.xlarge"
-  key_name = "${var.key_pair}"
-  user_data = "${data.template_cloudinit_config.config.rendered}"
-  vpc_security_group_ids = ["${concat(list("${aws_security_group.republica.id}"), "${var.security_groups}")}"]
-  subnet_id = "${var.subnet}"
+resource "aws_subnet" "public" {
+  vpc_id     = "${aws_vpc.republica.id}"
+  cidr_block = "10.0.0.0/24"
+  map_public_ip_on_launch = true
 
-  # Don't create a new instance every time init.yaml changes
-  lifecycle {
-    ignore_changes = ["user_data", "ami"]
+  tags {
+    Name = "Public subnet"
+    VPC = "republica"
+  }
+}
+
+resource "aws_subnet" "private" {
+  vpc_id     = "${aws_vpc.republica.id}"
+  cidr_block = "10.0.1.0/24"
+
+  tags {
+    Name = "Private subnet"
+    VPC = "republica"
+  }
+}
+
+resource "aws_internet_gateway" "gw" {
+  vpc_id = "${aws_vpc.republica.id}"
+
+  tags {
+    Name = "main"
+    VPC = "republica"
+  }
+}
+
+resource "aws_eip" "nat" {
+  vpc = true
+  depends_on = ["aws_internet_gateway.gw"]
+}
+
+resource "aws_nat_gateway" "gw" {
+  allocation_id = "${aws_eip.nat.id}"
+  subnet_id = "${aws_subnet.public.id}"
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = "${aws_vpc.republica.id}"
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = "${aws_internet_gateway.gw.id}"
   }
 
   tags {
-    Name = "republica"
+    Name = "Public subnet routes"
+    VPC = "republica"
   }
+}
+
+resource "aws_route_table_association" "public" {
+  subnet_id      = "${aws_subnet.public.id}"
+  route_table_id = "${aws_route_table.public.id}"
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = "${aws_vpc.republica.id}"
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = "${aws_nat_gateway.gw.id}"
+  }
+
+  tags {
+    Name = "Private subnet routes"
+    VPC = "republica"
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  subnet_id      = "${aws_subnet.private.id}"
+  route_table_id = "${aws_route_table.private.id}"
+}
+
+resource "aws_security_group" "ssh" {
+  name        = "ssh-vpc"
+  description = "Allow SSH inside the VPC"
+  vpc_id = "${aws_vpc.republica.id}"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
+}
+
+module "frontend" {
+  source = "frontend"
+  vpc = "${aws_vpc.republica.id}"
+  subnet = "${aws_subnet.public.id}"
+  hostname = "${var.hostname}"
+  setup = "${data.template_file.credentials.rendered}"
+  key_pair = "${var.key_pair}"
+  my_ip = "${var.my_ip}"
 }
 
 resource "aws_eip" "republica" {
-  instance = "${aws_instance.republica.id}"
+  vpc = true
+  instance = "${module.frontend.instance_id}"
+  depends_on = ["aws_internet_gateway.gw"]
 }
 
-resource "aws_volume_attachment" "data" {
-  device_name = "/dev/sdb"
-  volume_id = "${aws_ebs_volume.data.id}"
-  instance_id = "${aws_instance.republica.id}"
+module "node" {
+  source = "node"
+  vpc = "${aws_vpc.republica.id}"
+  subnet = "${aws_subnet.private.id}"
+  setup = "${data.template_file.credentials.rendered}"
+  key_pair = "${var.key_pair}"
+  security_groups = ["${aws_security_group.ssh.id}"]
 }
 
 # Bucket for Beer Aepp hosting logs
@@ -149,9 +173,11 @@ resource "aws_s3_bucket" "beer_aepp_logs" {
 resource "aws_s3_bucket" "beer_aepp" {
   bucket = "beer.aepps.com"
   acl    = "public-read"
+  policy = "${data.template_file.bucket_policy.rendered}"
 
   website {
     index_document = "index.html"
+    error_document = "index.html"
   }
 
   cors_rule {
@@ -172,6 +198,15 @@ resource "aws_s3_bucket" "beer_aepp" {
 
   tags {
     Name = "beer.aepps.com"
+  }
+}
+
+data "template_file" "bucket_policy" {
+  template = "${file("${path.module}/policy.json")}"
+
+  vars {
+    arn = "${var.ci_user}"
+    bucket = "beer.aepps.com"
   }
 }
 
@@ -197,8 +232,8 @@ resource "aws_cloudfront_distribution" "beer_aepp" {
 
   default_cache_behavior {
     viewer_protocol_policy = "allow-all" # Required for initial cert deployment
-    allowed_methods = ["HEAD", "GET"]
-    cached_methods = ["HEAD", "GET"]
+    allowed_methods = ["HEAD", "GET", "OPTIONS"]
+    cached_methods = ["HEAD", "GET", "OPTIONS"]
     compress = false
     default_ttl = 86400
     max_ttl = 31536000
@@ -213,6 +248,13 @@ resource "aws_cloudfront_distribution" "beer_aepp" {
         forward = "none"
       }
     }
+  }
+
+  custom_error_response {
+    error_caching_min_ttl = 300
+    error_code = 404
+    response_code = 200
+    response_page_path = "/index.html"
   }
 
   restrictions {
